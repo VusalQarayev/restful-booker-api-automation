@@ -1,0 +1,50 @@
+name: Restful Booker API Automation CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    name: Run Newman API Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Newman and HTML Extra Reporter
+        run: npm install
+
+      - name: Execute Postman Collection via Newman
+        env:
+          API_PASSWORD: ${{ secrets.API_PASSWORD }}
+        run: |
+          PASSWORD_VAL="${API_PASSWORD:-password123}"
+          npx newman run collections/restful-booker.postman_collection.json \
+            -e environments/restful-booker-qa.postman_environment.json \
+            --env-var "password=${PASSWORD_VAL}" \
+            --delay-request 150 \
+            -r cli,htmlextra \
+            --reporter-htmlextra-export reports/newman-report.html \
+            --reporter-htmlextra-title "Restful Booker API CI Report" \
+            --reporter-htmlextra-darkTheme
+
+      - name: Upload HTML Test Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-html-report-${{ github.run_number }}
+          path: reports/newman-report.html
+          retention-days: 14

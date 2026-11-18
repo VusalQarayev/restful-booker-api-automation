@@ -1,0 +1,21 @@
+{
+  "name": "restful-booker-api-automation",
+  "version": "1.0.0",
+  "description": "End-to-end automated REST API test suite built with Postman, Newman, Ajv JSON Schema validation, and GitHub Actions CI.",
+  "scripts": {
+    "test": "newman run collections/restful-booker.postman_collection.json -e environments/restful-booker-qa.postman_environment.json --env-var \"password=password123\" -r cli,htmlextra --reporter-htmlextra-export reports/newman-report.html --reporter-htmlextra-title \"Restful Booker API Test Report\" --reporter-htmlextra-darkTheme"
+  },
+  "keywords": [
+    "postman",
+    "newman",
+    "api-testing",
+    "qa-automation",
+    "json-schema",
+    "github-actions"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}
