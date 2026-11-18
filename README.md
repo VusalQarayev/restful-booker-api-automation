@@ -1,56 +1,319 @@
-# Restful Booker — End-to-End REST API Test Automation Suite
+# Restful Booker API Automation
 
-[![Restful Booker API Automation CI](https://github.com/VusalQarayev/restful-booker-api-automation/actions/workflows/api-tests.yml/badge.svg)](https://github.com/VusalQarayev/restful-booker-api-automation/actions/workflows/api-tests.yml)
-![Postman Collection v2.1](https://img.shields.io/badge/Postman-Collection%20v2.1-FF6C37?logo=postman&logoColor=white)
-![Newman CLI](https://img.shields.io/badge/Runner-Newman%20CLI-00A98F?logo=node.js&logoColor=white)
-![JSON Schema](https://img.shields.io/badge/Contract%20Validation-Ajv%20JSON%20Schema-2B5B84)
+An end-to-end REST API test automation project built with **Postman**,
+**JavaScript**, **Newman**, and **GitHub Actions**. The suite targets
+the public [Restful Booker API](https://restful-booker.herokuapp.com/)
+and demonstrates API test design, stateful request chaining, contract
+validation, negative testing, and CI reporting.
 
-An automated, CI-ready REST API testing framework built with **Postman**, **JavaScript (Chai & Ajv JSON Schema)**, **Newman CLI**, and **GitHub Actions** targeting the [Restful Booker](https://restful-booker.herokuapp.com) booking management API.
+## Project highlights
 
-This project demonstrates production-grade API quality engineering—combining stateful end-to-end CRUD chaining, strict contract validation, defensive error handling, security/negative boundary coverage, and automated HTML reporting.
+-   **End-to-end CRUD workflow:** Authenticates, creates a booking,
+    retrieves it, updates it with `PUT` and `PATCH`, deletes it, and
+    verifies that it can no longer be retrieved.
+-   **Dynamic test data:** Uses Postman's Faker library to generate
+    booking data and avoid relying on fixed guest details.
+-   **JSON Schema validation:** Checks response structure, required
+    properties, primitive data types, and date formats.
+-   **Reusable quality checks:** Applies collection-level assertions for
+    response-time limits, gateway errors, and required environment
+    configuration.
+-   **Defensive response handling:** Checks status codes and content
+    types before parsing JSON, producing clearer failures when the API
+    returns plain-text or unexpected responses.
+-   **Negative and boundary coverage:** Exercises invalid credentials,
+    missing authentication, unknown booking IDs, unsupported `Accept`
+    headers, and incomplete booking payloads.
+-   **CI execution and reporting:** Runs the suite through GitHub
+    Actions and publishes an HTML report as a workflow artifact.
+-   **Credential hygiene:** Keeps the environment password blank in the
+    committed export and supplies it at runtime.
 
----
+## Technology stack
 
-## Key Engineering Highlights
+  -----------------------------------------------------------------------
+  Technology                          Purpose
+  ----------------------------------- -----------------------------------
+  Postman Collection v2.1             API requests, pre-request scripts,
+                                      and test assertions
 
-* **Stateful End-to-End Request Chaining:** Dynamically authenticates (`POST /auth`) to capture a session token, generates collision-free guest bookings via Postman's Faker library (`POST /booking`), and chains `auth_token`, `bookingid`, and expected payload state across `GET`, `PUT`, `PATCH`, `DELETE`, and post-deletion `404` verification.
-* **Strict JSON Schema Contract Validation:** Enforces response object structure, required fields, strict primitive types (`number`, `boolean`, `string`), and ISO `YYYY-MM-DD` date regex patterns using Postman's built-in **Ajv** validator (`pm.response.to.have.jsonSchema()`).
-* **Collection-Level Quality Gates (DRY Architecture):** Centralizes global response-time SLA checks, gateway health assertions (`502` / `503` / `504`), and fail-fast environment guardrails at the collection root so every request inherits baseline quality gates without duplicated code.
-* **Defensive Script Execution:** Guards `pm.response.json()` parsing behind HTTP status and `Content-Type` header checks so unexpected plain-text error responses (`403`, `404`, `405`, `500`) fail gracefully with diagnostic messages rather than crashing the runner with uncaught `JSONError` exceptions.
-* **Partial Update (`PATCH`) Regression Protection:** Validates both the mutated fields (`totalprice`, `additionalneeds`) and confirms that all omitted fields (`firstname`, `lastname`, `depositpaid`, `bookingdates`) remain intact.
-* **Zero-Secret Environment Hygiene:** Keeps sensitive credentials unshared in exported `.postman_environment.json` files and injects secrets dynamically at runtime via CLI flags and GitHub Actions Secrets.
-* **Automated CI/CD & Interactive HTML Reports:** Executes on every push, pull request, manual trigger, and daily cron schedule, publishing dark-themed `newman-reporter-htmlextra` dashboards as downloadable GitHub Actions artifacts.
+  JavaScript / Chai                   Test logic and assertions
 
----
+  JSON Schema / Ajv                   Response contract validation
 
-## Repository Structure
+  Newman                              Command-line collection execution
 
-```text
+  `newman-reporter-htmlextra`         HTML test reporting
+
+  GitHub Actions                      Continuous integration
+
+  Node.js and npm                     Dependency management and test
+                                      execution
+  -----------------------------------------------------------------------
+
+## Repository structure
+
+``` text
 restful-booker-api-automation/
 ├── .github/
 │   └── workflows/
-│       └── api-tests.yml                              # GitHub Actions CI pipeline & artifact publisher
+│       └── api-tests.yml
 ├── collections/
-│   └── restful-booker.postman_collection.json     # Postman Collection v2.1 (scripts, schemas & docs)
+│   └── restful-booker.postman_collection.json
 ├── environments/
-│   └── restful-booker-qa.postman_environment.json # Sanitized QA environment configuration
-├── .gitignore                                     # Excludes node_modules/, reports/, and local logs
-├── package.json                                   # Newman dependencies and npm test script
-├── package-lock.json                              # Locked dependency tree for deterministic CI caching
-└── README.md                                      # Project documentation and API quirk analysis
+│   └── restful-booker-qa.postman_environment.json
+├── .gitignore
+├── package.json
+├── package-lock.json
+└── README.md
+```
 
-Test Suite Architecture & CoverageThe collection is organized into four logical folders. When executed sequentially via Postman Collection Runner or Newman CLI, all dynamic variables resolve automatically from start to finish:FolderRequest NameMethod & EndpointKey Assertions & Validations01_Health_and_AuthHealth Check - PingGET /pingConfirms service availability (201 Created & plain-text "Created" body)01_Health_and_AuthCreate Auth Token - Valid CredentialsPOST /authValidates 200 OK, JSON header, alphanumeric token regex, and saves auth_token02_Booking_E2E_CRUD_FlowCreate Booking - Valid PayloadPOST /bookingGenerates dynamic Faker guest data, validates nested Ajv schema, verifies echoed values, and chains bookingid02_Booking_E2E_CRUD_FlowGet Booking by IDGET /booking/{{bookingid}}Verifies read-after-write persistence, flat Ajv schema, and business rule (checkout > checkin)02_Booking_E2E_CRUD_FlowUpdate Booking - Full (PUT)PUT /booking/{{bookingid}}Authenticates via Cookie: token={{auth_token}}, validates full replacement and flat Ajv schema02_Booking_E2E_CRUD_FlowPartial Update Booking (PATCH)PATCH /booking/{{bookingid}}Verifies mutated fields (totalprice, additionalneeds) AND confirms untouched fields were not overwritten02_Booking_E2E_CRUD_FlowDelete Booking by IDDELETE /booking/{{bookingid}}Authenticates via session cookie and verifies 201 Created deletion convention02_Booking_E2E_CRUD_FlowVerify Booking Deleted (404)GET /booking/{{bookingid}}Confirms permanent deletion (404 Not Found) and cleans up runtime bookingid03_Search_and_FilteringFilter Bookings by Guest NameGET /booking?firstname=...&lastname=...Validates URL-encoded query parameters, array response structure, and relational bookingid lookup04_Negative_and_Edge_CasesCreate Auth Token - Invalid CredentialsPOST /authVerifies "Bad credentials" error payload and ensures no token is leaked04_Negative_and_Edge_CasesUpdate Booking - Unauthorized (Missing Token)PUT /booking/1Security test confirming 403 Forbidden when session cookie is omitted04_Negative_and_Edge_CasesGet Booking - Non-Existent ID (404)GET /booking/99999999Boundary test confirming 404 Not Found for invalid record IDs04_Negative_and_Edge_CasesGet Booking - Unsupported Accept Header (418)GET /booking/1 (Accept: text/xml)Content-negotiation test confirming 418 I'm a teapot on unsupported media types04_Negative_and_Edge_CasesCreate Booking - Missing Required FieldsPOST /bookingNegative validation test documenting unhandled 500 Internal Server ErrorNon-Standard API Behaviors & Documented DefectsRestful Booker is intentionally designed with realistic legacy quirks and backend defects to test critical QA thinking. Rather than ignoring these behaviors, this suite explicitly asserts and documents each one:#EndpointObserved BehaviorStandard REST ExpectationHow This Suite Handles It1GET /ping & DELETE /booking/:idReturns 201 Created with plain-text body "Created" (text/plain)200 OK (for ping) and 200 OK or 204 No Content (for delete)Asserts 201 Created and "Created" text per API specification without false JSON header checks2POST /auth (Invalid Login)Returns 200 OK with {"reason": "Bad credentials"}401 UnauthorizedExplicitly asserts 200 OK with the "Bad credentials" message, documents the HTTP spec violation, and verifies no token key is exposed3POST /booking (Missing Fields)Returns 500 Internal Server Error when required fields like bookingdates are omitted400 Bad Request with a validation messageCovered by a dedicated negative test in 04_Negative_and_Edge_Cases catching the unhandled server exception4GET /booking?checkin=...&checkout=...Backend date comparison uses strict greater-than (>) instead of >=, returning [] when querying an exact check-in dateInclusive (>=) date range filteringSearch tests filter by firstname and lastname for reliable lookup, while the date-filter bug is documented in request docs5PUT, PATCH, DELETE /booking/:idRejects standard Authorization: Bearer <token> headers with 403 Forbidden; requires Cookie: token=<token>Standard Authorization: Bearer headerUses explicit Cookie: token={{auth_token}} headers and includes a negative test verifying 403 Forbidden when omitted6PUT & PATCH /booking/:id (Missing ID)Returns 405 Method Not Allowed instead of 404 Not Found when targeting a non-existent or reset ID404 Not FoundHandled in defensive status/JSON guards with diagnostic error messages7GET /booking/:id (Media Type)Returns 418 I'm a teapot if an unsupported Accept header (such as text/xml) is sent406 Not AcceptableExplicitly sets Accept: application/json on positive requests and verifies 418 in negative content-negotiation tests8All Stateful EndpointsThe public Heroku sandbox automatically wipes and resets its database and active session tokens every 10 minutesPersistent test environmentPre-request guardrails and dynamic chaining allow the entire suite to execute end-to-end in ~2 seconds in CI without state driftGetting StartedOption 1: Run via Command Line (Newman CLI)PrerequisitesNode.js (v18 or higher)Installation & ExecutionBash# 1. Clone the repository
-git clone [https://github.com/VusalQarayev/restful-booker-api-automation.git](https://github.com/VusalQarayev/restful-booker-api-automation.git)
+The `reports/` directory is generated when tests run and should remain
+excluded from Git.
+
+## Test coverage
+
+The collection is organized into four folders.
+
+  -----------------------------------------------------------------------------------------------------------------
+  Folder                         Request           Method                                      Main checks
+  ------------------------------ ----------------- ------------------------------------------- --------------------
+  `01_Health_and_Auth`           Health Check -    `GET /ping`                                 Confirms API
+                                 Ping                                                          availability; checks
+                                                                                               the observed
+                                                                                               `201 Created`
+                                                                                               plain-text response.
+
+  `01_Health_and_Auth`           Create Auth       `POST /auth`                                Checks the response
+                                 Token - Valid                                                 and token format;
+                                 Credentials                                                   stores `auth_token`.
+
+  `02_Booking_E2E_CRUD_Flow`     Create Booking -  `POST /booking`                             Generates booking
+                                 Valid Payload                                                 data, validates the
+                                                                                               response schema,
+                                                                                               checks returned
+                                                                                               values, and stores
+                                                                                               `bookingid`.
+
+  `02_Booking_E2E_CRUD_Flow`     Get Booking by ID `GET /booking/{bookingid}`                  Checks
+                                                                                               read-after-write
+                                                                                               persistence,
+                                                                                               response schema, and
+                                                                                               checkout/check-in
+                                                                                               date ordering.
+
+  `02_Booking_E2E_CRUD_Flow`     Update Booking -  `PUT /booking/{bookingid}`                  Authenticates with
+                                 Full (PUT)                                                    the session cookie
+                                                                                               and validates the
+                                                                                               replacement booking.
+
+  `02_Booking_E2E_CRUD_Flow`     Partial Update    `PATCH /booking/{bookingid}`                Checks changed
+                                 Booking (PATCH)                                               fields and verifies
+                                                                                               that omitted fields
+                                                                                               remain unchanged.
+
+  `02_Booking_E2E_CRUD_Flow`     Delete Booking by `DELETE /booking/{bookingid}`               Authenticates with
+                                 ID                                                            the session cookie
+                                                                                               and checks the API's
+                                                                                               observed deletion
+                                                                                               response.
+
+  `02_Booking_E2E_CRUD_Flow`     Verify Booking    `GET /booking/{bookingid}`                  Confirms that the
+                                 Deleted (404)                                                 deleted booking can
+                                                                                               no longer be
+                                                                                               retrieved.
+
+  `03_Search_and_Filtering`      Filter Bookings   `GET /booking?firstname=...&lastname=...`   Checks URL-encoded
+                                 by Guest Name                                                 query parameters,
+                                                                                               array response
+                                                                                               structure, and
+                                                                                               booking ID lookup.
+
+  `04_Negative_and_Edge_Cases`   Create Auth       `POST /auth`                                Checks the
+                                 Token - Invalid                                               `Bad credentials`
+                                 Credentials                                                   response and
+                                                                                               confirms that no
+                                                                                               token is returned.
+
+  `04_Negative_and_Edge_Cases`   Update Booking -  `PUT /booking/1`                            Checks the observed
+                                 Unauthorized                                                  `403 Forbidden`
+                                 (Missing Token)                                               response when the
+                                                                                               session cookie is
+                                                                                               missing.
+
+  `04_Negative_and_Edge_Cases`   Get Booking -     `GET /booking/99999999`                     Checks the not-found
+                                 Non-Existent ID                                               response for an
+                                 (404)                                                         unknown booking ID.
+
+  `04_Negative_and_Edge_Cases`   Get Booking -     `GET /booking/1`                            Checks the observed
+                                 Unsupported                                                   response to an
+                                 Accept Header                                                 unsupported
+                                 (418)                                                         `Accept: text/xml`
+                                                                                               header.
+
+  `04_Negative_and_Edge_Cases`   Create Booking -  `POST /booking`                             Documents and checks
+                                 Missing Required                                              the API's observed
+                                 Fields                                                        server error for an
+                                                                                               incomplete payload.
+  -----------------------------------------------------------------------------------------------------------------
+
+> **Execution order matters:** The CRUD flow uses runtime variables such
+> as `auth_token` and `bookingid`. Run the collection sequentially so
+> that values created by earlier requests are available to later
+> requests.
+
+## API behaviors and observed deviations
+
+The suite records several behaviors observed in the target public
+sandbox. These are useful regression checks, but they should not be
+interpreted as recommended REST API design.
+
+  ---------------------------------------------------------------------------------------------------------
+  Endpoint / scenario      Observed behavior in this        Common REST expectation   Test-suite treatment
+                           project                                                    
+  ------------------------ -------------------------------- ------------------------- ---------------------
+  `GET /ping`              `201 Created` with plain-text    A health check commonly   Asserts the observed
+                           body `Created`                   returns `200 OK`          status and body
+                                                                                      rather than assuming
+                                                                                      JSON.
+
+  `DELETE /booking/{id}`   `201 Created` with plain-text    Commonly `200 OK` or      Checks the behavior
+                           body `Created`                   `204 No Content`          currently observed by
+                                                                                      the suite.
+
+  `POST /auth` with        `200 OK` with                    Commonly                  Checks the error
+  invalid credentials      `{"reason":"Bad credentials"}`   `401 Unauthorized`        message and verifies
+                                                                                      that no token is
+                                                                                      exposed.
+
+  `POST /booking` with     `500 Internal Server Error`      Commonly                  Includes a negative
+  required fields missing                                   `400 Bad Request` with    test to document the
+                                                            validation details        observed server-side
+                                                                                      failure.
+
+  Date filtering with      Exact check-in boundary may be   Inclusive boundary        Uses guest-name
+  `checkin` / `checkout`   excluded by a strict             behavior may be expected, filtering for the
+                           greater-than comparison          depending on the API      reliable lookup flow
+                                                            contract                  and documents the
+                                                                                      date-filter
+                                                                                      observation.
+
+  Authenticated booking    Requires                         APIs often support an     Uses the session
+  updates/deletes          `Cookie: token={token}`; a       `Authorization: Bearer`   cookie and includes a
+                           bearer token is not accepted by  header                    missing-cookie
+                           the tested flow                                            negative test.
+
+  `PUT` / `PATCH` for a    May return                       Commonly `404 Not Found`  Defensive status and
+  missing or reset ID      `405 Method Not Allowed`         for an unknown resource   content-type checks
+                                                                                      help report
+                                                                                      unexpected responses.
+
+  Unsupported `Accept`     `Accept: text/xml` may produce   Commonly                  Includes a negative
+  header                   `418 I'm a teapot`               `406 Not Acceptable`      content-negotiation
+                                                                                      test.
+  ---------------------------------------------------------------------------------------------------------
+
+The public sandbox may reset its data and invalidate session tokens
+periodically. The suite therefore creates its own booking and token at
+runtime rather than depending on persistent test data.
+
+## Getting started
+
+### Prerequisites
+
+-   Node.js 18 or later
+-   npm
+-   Git
+-   Postman (optional, for running the collection in the Postman
+    application)
+
+### 1. Clone the repository
+
+``` bash
+git clone https://github.com/VusalQarayev/restful-booker-api-automation.git
 cd restful-booker-api-automation
+```
 
-# 2. Install Newman and newman-reporter-htmlextra
+### 2. Install dependencies
+
+``` bash
 npm install
+```
 
-# 3. Execute the full test suite and generate the HTML report
+Commit `package-lock.json` to the repository. It allows CI to install
+the same dependency versions reproducibly and is required when GitHub
+Actions uses npm dependency caching.
+
+### 3. Run the tests
+
+``` bash
 npm test
-Once execution finishes, open reports/newman-report.html in any web browser to view the interactive dashboard with request/response payloads, timing metrics, and assertion details.Option 2: Run in Postman (Desktop or Web)Open Postman and click Import in the top-left sidebar.Import both files from this repository:collections/restful-booker.postman_collection.jsonenvironments/restful-booker-qa.postman_environment.jsonSelect Restful-Booker-QA from the environment dropdown in the top-right corner.Open the Restful-Booker-QA environment and enter password123 into the password Value field (kept blank in Git for security).Click ... next to Restful-Booker-API-Automation → Run to execute all folders in sequence.CI/CD Pipeline (GitHub Actions)The workflow defined in .github/workflows/api-tests.yml automatically executes the Newman suite on:Every push or pull request targeting mainA daily scheduled cron job (08:00 UTC) to monitor external API availabilityManual runs via Actions → Restful Booker API Automation CI → Run workflowConfiguring Secrets (Optional)The workflow defaults to the public sandbox credentials (password123) so forks run out of the box. To override credentials securely in your own repository:Navigate to Settings → Secrets and variables → Actions.Click New repository secret, name it API_PASSWORD, and save your value.Viewing CI HTML ReportsAfter any workflow run completes (whether passing or failing), open the run summary under the Actions tab and download newman-html-report-<run_number> from the Artifacts section.
-<ElicitationsGroup message="Your README.md is ready to save! Let me know what you'd like to do next:">
-<Elicitation label="Walk me through pushing everything to GitHub" query="I saved README.md and all project files. Walk me through creating the GitHub repository and pushing my code."/>
-<Elicitation label="Add a data-driven CSV test iteration suite" query="How can I add a CSV data file and run multiple data-driven booking iterations with Newman?"/>
-<Elicitation label="Write a LinkedIn post to showcase this repository" query="Write a concise, technical LinkedIn post showcasing this Postman, Newman, and GitHub Actions API automation portfolio project."/>
-</ElicitationsGroup>
+```
+
+The npm script supplies the public sandbox password at runtime and
+generates an HTML report at:
+
+``` text
+reports/newman-report.html
+```
+
+Open that file in a browser to review request details, response
+payloads, execution times, and assertion results.
+
+### Run the collection directly in Postman
+
+1.  Open Postman and select **Import**.
+2.  Import `collections/restful-booker.postman_collection.json`.
+3.  Import `environments/restful-booker-qa.postman_environment.json`.
+4.  Select the **Restful-Booker-QA** environment.
+5.  If required, set the `password` environment variable to the sandbox
+    password (`password123`) in your local Postman environment. Do not
+    commit populated credentials.
+6.  Open the collection and run all folders sequentially using
+    Collection Runner.
+
+## GitHub Actions CI
+
+The workflow is located at `.github/workflows/api-tests.yml`.
+
+According to the workflow configuration, the suite is triggered by:
+
+-   Pushes to `main`
+-   Pull requests targeting `main`
+-   A scheduled daily run at 08:00 UTC
+-   Manual execution through **Actions → Restful Booker API Automation
+    CI → Run workflow**
+
+After a run completes, open the workflow run in the **Actions** tab and
+download the HTML report from its **Artifacts** section. The artifact
+name is configured in the workflow and may include the run number.
+
+### Optional: configure a repository secret
+
+If you want to override the default sandbox password:
+
+1.  Open the repository's **Settings → Secrets and variables →
+    Actions**.
+2.  Select **New repository secret**.
+3.  Set the name to `API_PASSWORD`.
+4.  Enter the password as the secret value.
+5.  Confirm that the workflow reads `API_PASSWORD` and passes it to
+    Newman at runtime.
+
+Do not place real credentials in the collection, environment export,
+README, or committed workflow file.
+
+## Notes and limitations
+
+-   This project targets a public demo API, not a production service.
+    Its data and behavior may change without notice.
+-   The API deviations above are observations from the test environment
+    and may change over time.
+-   A test that asserts an observed API defect is documenting current
+    behavior; it does not mean that behavior is correct.
+-   The test suite depends on sequential execution because requests
+    share runtime variables.
+-   The HTML report is generated locally or in CI and should not be
+    committed unless there is a specific reason to version a report.
+
+By Vusal Qarayev
