@@ -5,14 +5,6 @@
   "scripts": {
     "test": "newman run collections/restful-booker.postman_collection.json -e environments/restful-booker-qa.postman_environment.json --env-var \"password=password123\" -r cli,htmlextra --reporter-htmlextra-export reports/newman-report.html --reporter-htmlextra-title \"Restful Booker API Test Report\" --reporter-htmlextra-darkTheme"
   },
-  "keywords": [
-    "postman",
-    "newman",
-    "api-testing",
-    "qa-automation",
-    "json-schema",
-    "github-actions"
-  ],
   "license": "MIT",
   "devDependencies": {
     "newman": "^6.2.1",
